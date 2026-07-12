@@ -47,15 +47,21 @@
 
   .map-card{background:var(--ink-2);border:1px solid var(--line);border-radius:16px;padding:16px 16px 6px;position:relative;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.28);}
   .legend{display:flex;flex-wrap:wrap;gap:5px 10px;margin:0 0 12px;padding:0;list-style:none;font-size:10.4px;max-height:70px;overflow-y:auto;}
-  .legend li{display:flex;align-items:center;gap:5px;color:var(--text-soft);white-space:nowrap;transition:color .15s;}
+  .legend li{display:flex;align-items:center;gap:5px;color:var(--text-soft);white-space:nowrap;cursor:pointer;transition:color .15s;}
   .legend li:hover{color:var(--parchment);}
+  .legend li.active-filter{color:var(--parchment);font-weight:600;}
+  .legend li.active-filter .swatch{box-shadow:0 0 0 2px var(--gold);}
+  .legend-color{width:14px;height:14px;padding:0;border:none;border-radius:3px;background:none;cursor:pointer;flex:none;}
+  .legend-color::-webkit-color-swatch-wrapper{padding:0;}
+  .legend-color::-webkit-color-swatch{border:1px solid var(--line);border-radius:3px;}
   .legend .swatch{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none;}
 
   svg{width:100%;height:auto;display:block;}
   #zoomGroup{transition:transform .65s cubic-bezier(.4,0,.2,1);}
   .prov{cursor:pointer;stroke:#1a1e26;stroke-width:.45;vector-effect:non-scaling-stroke;transition:filter .12s ease, opacity .5s ease;}
-  .prov:hover{filter:brightness(1.25);}
-  .prov.active{stroke:var(--parchment);stroke-width:1.1;vector-effect:non-scaling-stroke;}
+  .prov:hover{filter:brightness(1.22) drop-shadow(0 0 2px rgba(201,154,58,.5));}
+  .prov.active{stroke:var(--parchment);stroke-width:1.1;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 3px rgba(201,154,58,.55));}
+  .prov.region-hl{filter:brightness(1.28) drop-shadow(0 0 3px rgba(201,154,58,.5));}
   .prov.dimmed{opacity:.32;}
   .prov.uncovered{fill:#3a3f4a !important;}
   .prov-label{font-size:6px;fill:var(--parchment);text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:rgba(15,17,22,.85);stroke-width:1.4px;font-weight:500;}
@@ -91,7 +97,8 @@
   .head-row:first-of-type{border-top:none;padding-top:0;}
   .head-role{display:block;font-size:9.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;}
   .head-who{display:block;font-size:12px;font-weight:600;color:var(--parchment);overflow-wrap:break-word;word-break:break-word;}
-  .head-phone{display:block;font-size:11px;font-weight:400;color:var(--gold);margin-top:1px;}
+  .head-phone{display:block;font-size:11px;font-weight:400;color:var(--gold);margin-top:1px;font-variant-numeric:tabular-nums;}
+  .contact-row .phone{font-variant-numeric:tabular-nums;}
   .head-empty{color:var(--text-soft);font-weight:400;font-style:italic;}
 
   button.warn{background:#7a3030;border-color:#7a3030;color:var(--parchment);}
@@ -219,13 +226,80 @@ function regionColor(num){ return REGION_META[num] ? REGION_META[num].color : "#
 function unitsFor(name){ return PROVINCE_UNITS[name] || []; }
 function regionSetFor(name){ return [...new Set(unitsFor(name).map(u=>u.region))]; }
 
+let highlightRegion = null;   // legend'den seçilen, haritada vurgulanan bölge
+
+function toHex(c){ return /^#[0-9a-fA-F]{6}$/.test(c||"") ? c : "#888888"; }
+function hslToHex(h,s,l){
+  s/=100; l/=100;
+  const a=s*Math.min(l,1-l);
+  const f=n=>{ const k=(n+h/30)%12; const c=l-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1))); return Math.round(255*c).toString(16).padStart(2,"0"); };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+const REGION_PALETTE = ["#c0554d","#4f8f8b","#c99a3a","#7a6da8","#5aa06a","#b5683e","#4a7db5","#a8557f","#6a9a4a","#b58a3a","#4f8f6b","#8f5a8f","#3f7d8b","#a86a4a","#5a8f9a","#9a5a5a"];
+function nextRegionColor(){
+  const used = new Set(Object.values(REGION_META).map(r=>(r.color||"").toLowerCase()));
+  for(const c of REGION_PALETTE){ if(!used.has(c.toLowerCase())) return c; }
+  return hslToHex((Object.keys(REGION_META).length*47)%360, 45, 52);
+}
+
+// Düzenle modunda yeni bölge oluşturur (veri modeli aynı şekilde büyür).
+function addRegion(){
+  const nums = Object.keys(REGION_META).map(n=>parseInt(n,10)).filter(n=>!isNaN(n));
+  const next = (nums.length ? Math.max(...nums) : 0) + 1;
+  const baseRoles = (REGION_META[1] && REGION_META[1].roleLabels) ? REGION_META[1].roleLabels.slice() : ["SORUMLU"];
+  REGION_META[next] = { name: next+". Bölge", color: nextRegionColor(), roleLabels: baseRoles, topContacts: [] };
+  renderLegend(); renderMap();
+  toggleRegionFilter(next);   // yeni bölgenin düzenlenebilir kartını hemen aç
+  showToast(next+". Bölge eklendi. Rengini legend'den; adı/kişilerini bu karttan düzenleyin. İl atamak için bir il seçip birim bölgesini değiştirin.", "ok");
+}
+
+// Legend tıklaması: bir bölgeyi haritada vurgula, diğerlerini soluklaştır.
+function toggleRegionFilter(num){
+  highlightRegion = (highlightRegion === num) ? null : num;
+  activeProvince = null; selectedUnitIdx = null;
+  renderLegend(); renderMap(); setZoom(null); renderPanel();
+  applyRegionHighlight();
+}
+
+// renderMap sonrası pathEls'e sınıf ekler (çizim mantığına dokunmaz).
+function applyRegionHighlight(){
+  if(!pathEls) return;
+  let matched = 0;
+  GEO.forEach(f=>{ const us=unitsFor(f.name); if(us.length && us[0].region===highlightRegion) matched++; });
+  GEO.forEach(f=>{
+    const p = pathEls[f.name]; if(!p) return;
+    p.classList.remove("region-hl");
+    const us = unitsFor(f.name);
+    const rg = us.length ? us[0].region : null;
+    if(highlightRegion==null || matched===0){ p.classList.remove("dimmed"); }
+    else if(rg===highlightRegion){ p.classList.add("region-hl"); p.classList.remove("dimmed"); }
+    else { p.classList.add("dimmed"); }
+  });
+}
+
 function renderLegend(){
   const legend = document.getElementById("legend");
   legend.innerHTML = "";
   Object.keys(REGION_META).sort((a,b)=>a-b).forEach(num=>{
     const r = REGION_META[num];
     const li = document.createElement("li");
-    li.innerHTML = `<span class="swatch" style="background:${r.color}"></span>${num}. Bölge`;
+    li.dataset.region = num;
+    if(String(highlightRegion) === String(num)) li.classList.add("active-filter");
+
+    if(editMode){
+      const ci = document.createElement("input");
+      ci.type = "color"; ci.className = "legend-color"; ci.title = "Bölge rengi";
+      ci.value = toHex(r.color);
+      ci.addEventListener("click", e=> e.stopPropagation());   // renk seçici filtreyi tetiklemesin
+      ci.addEventListener("input", ()=>{ r.color = ci.value; renderLegend(); renderMap(); renderPanel(); });
+      li.appendChild(ci);
+    } else {
+      const sw = document.createElement("span");
+      sw.className = "swatch"; sw.style.background = r.color;
+      li.appendChild(sw);
+    }
+    li.appendChild(document.createTextNode(num + ". Bölge"));
+    li.addEventListener("click", ()=> toggleRegionFilter(parseInt(num,10)));
     legend.appendChild(li);
   });
 }
@@ -360,6 +434,7 @@ function setZoom(name){
 }
 
 function selectProvince(name){
+  highlightRegion = null;
   activeProvince = name;
   selectedUnitIdx = null;
   renderMap();
@@ -536,6 +611,20 @@ function buildRegionHeadWrap(regionNums){
 function renderPanel(){
   const panel = document.getElementById("panel");
   if(!activeProvince){
+    if(highlightRegion && REGION_META[highlightRegion]){
+      panel.innerHTML = "";
+      if(editMode){
+        const hint = document.createElement("div");
+        hint.className = "edit-hint";
+        hint.textContent = "Bölge düzenleme: ad, renk (legend'den) ve baş sorumluları değiştirebilirsiniz. İl atamak için bir il seçip birim bölgesini değiştirin.";
+        panel.appendChild(hint);
+      }
+      const head = document.createElement("div");
+      head.innerHTML = `<span class="region-tag"><span class="pill"><span class="dot" style="background:${regionColor(highlightRegion)}"></span>${highlightRegion}. Bölge</span></span><h2>${REGION_META[highlightRegion].name}</h2><div style="font-size:11.5px;color:var(--text-soft);margin-top:2px;">Haritada vurgulandı · detay için bir il seçin</div>`;
+      panel.appendChild(head);
+      panel.appendChild(buildRegionHeadWrap([highlightRegion]));
+      return;
+    }
     panel.innerHTML = `<div class="empty-panel"><div class="glyph">◈</div><div>Haritadan bir il seçtiğinizde<br>bölge ve birim bilgileri burada görünecek.</div></div>`;
     return;
   }
@@ -702,10 +791,17 @@ function renderToolbar(){
       snapshot();
       editMode = true;
       renderToolbar();
+      renderLegend();
       renderPanel();
     });
     bar.appendChild(editBtn);
   } else {
+    const addBtn = document.createElement("button");
+    addBtn.textContent = "+ Bölge Ekle";
+    addBtn.title = "Yeni bölge oluştur";
+    addBtn.addEventListener("click", addRegion);
+    bar.appendChild(addBtn);
+
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "warn";
     cancelBtn.textContent = "Vazgeç";
@@ -773,7 +869,8 @@ function renderToolbar(){
 }
 
 document.getElementById("resetBtn").addEventListener("click", ()=>{
-  activeProvince=null; selectedUnitIdx=null; renderMap(); setZoom(null); renderPanel();
+  highlightRegion=null; activeProvince=null; selectedUnitIdx=null;
+  renderMap(); setZoom(null); renderLegend(); renderPanel();
 });
 
 async function init(){
