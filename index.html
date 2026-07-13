@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Türkiye Vakıf Bölge Haritası</title>
+<title>Giriş</title>
 <style>
   :root{
     --ink:#1c2129; --ink-2:#252b36; --parchment:#f4efe2; --parchment-dim:#e7dfc9;
@@ -142,6 +142,7 @@
 
   /* --- Modal (login + kullanıcı yönetimi + bölge il seçici) --- */
   .modal-overlay{position:fixed;inset:0;background:rgba(10,12,16,.72);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;}
+  #loginOverlay{background:#0a0c10;}
   .modal-card{background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
   .modal-card h2{margin:0 0 4px;font-size:17px;color:var(--parchment);}
   .modal-card .modal-sub{font-size:12px;color:var(--text-soft);margin-bottom:16px;}
@@ -166,7 +167,7 @@
 <div id="loginOverlay" class="modal-overlay" style="display:none;">
   <div class="modal-card">
     <h2>Giriş Yap</h2>
-    <div class="modal-sub">Türkiye Vakıf Bölge Haritası — erişim için hesap gerekli.</div>
+    <div class="modal-sub">Devam etmek için giriş yapın.</div>
     <form id="loginForm">
       <label for="loginUser">Kullanıcı adı</label>
       <input type="text" id="loginUser" autocomplete="username" required>
@@ -964,11 +965,13 @@ function clearAuth(){
 
 function showLogin(msg){
   stopPolling();
+  document.title = "Giriş";
   document.getElementById("loginOverlay").style.display = "flex";
   document.getElementById("loginError").textContent = msg || "";
   document.getElementById("loginPass").value = "";
 }
 function hideLogin(){
+  document.title = "Türkiye Vakıf Bölge Haritası";
   document.getElementById("loginOverlay").style.display = "none";
 }
 
