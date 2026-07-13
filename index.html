@@ -91,8 +91,11 @@
 
   .region-head-wrap{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding-bottom:6px;flex:none;}
   .region-head-card{flex:0 0 auto;width:222px;max-height:190px;overflow-y:auto;background:linear-gradient(180deg,#20242e,#1a1e26);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:10px 12px;min-width:0;}
+  .region-head-card.collapsed{max-height:none;overflow-y:visible;}
+  .region-head-card.collapsed .head-row{display:none;}
   .region-head-title{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--parchment);margin-bottom:7px;white-space:nowrap;}
   .region-head-title .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .head-chevron{margin-left:auto;flex:none;color:var(--text-soft);font-size:10px;}
   .head-row{padding:5px 0;border-top:1px solid rgba(255,255,255,.06);}
   .head-row:first-of-type{border-top:none;padding-top:0;}
   .head-role{display:block;font-size:9.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;}
@@ -111,7 +114,7 @@
   .edit-input.phone-input{margin-top:4px;color:var(--gold);}
   .edit-who{display:flex;flex-direction:column;gap:0;flex:1;min-width:0;}
   .edit-select{font-family:inherit;font-size:11.5px;background:var(--ink-2);border:1px solid var(--line);border-radius:6px;color:var(--parchment);padding:5px 7px;min-width:0;}
-  .region-name-input{font-family:inherit;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:transparent;border:1px dashed var(--line);border-radius:6px;color:var(--parchment);padding:3px 6px;width:100%;min-width:0;}
+  .region-name-input{font-family:inherit;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:transparent;border:1px dashed var(--line);border-radius:6px;color:var(--parchment);padding:3px 6px;flex:1;min-width:0;}
   .edit-hint{font-size:11px;color:var(--gold);background:rgba(201,154,58,.1);border:1px dashed var(--gold);border-radius:8px;padding:8px 10px;margin-bottom:2px;}
 
   .contact-card{background:var(--ink);border:1px dashed var(--line);border-radius:12px;padding:13px 14px;font-size:12.6px;display:flex;flex-direction:column;gap:8px;min-width:0;}
@@ -155,8 +158,12 @@
   .modal-card.wide{max-width:460px;}
   .user-list{list-style:none;margin:0 0 4px;padding:0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
   .user-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--ink);}
+  .activity-list{max-height:60vh;}
+  .activity-list li{flex-direction:column;align-items:flex-start;gap:2px;}
+  .activity-list .a-meta{font-size:10.5px;color:var(--text-soft);}
+  .activity-list .a-summary{overflow-wrap:break-word;word-break:break-word;}
   .user-list .u-role{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--gold);color:#20242c;font-weight:700;text-transform:uppercase;}
-  .user-list button.small,.modal-card .close-x{background:transparent;border:1px solid var(--line);padding:4px 9px;font-size:11px;box-shadow:none;}
+  .user-list button.small,.modal-card .close-x{background:transparent;border:1px solid var(--line);padding:9px 12px;min-height:36px;font-size:11px;box-shadow:none;}
 
   @media (prefers-reduced-motion: reduce){
     *,#zoomGroup,.region-num-group{transition-duration:.01ms !important;animation-duration:.01ms !important;animation-iteration-count:1 !important;}
@@ -203,6 +210,16 @@
     </form>
   </div>
 </div>
+<div id="activityOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-card wide">
+    <h2>Etkinlik Günlüğü</h2>
+    <div class="modal-sub">Hangi kullanıcı ne zaman ne değiştirdi (en yeni üstte).</div>
+    <ul class="user-list activity-list" id="activityList"></ul>
+    <div class="modal-actions">
+      <button type="button" class="close-x" id="closeActivityBtn">Kapat</button>
+    </div>
+  </div>
+</div>
 <div id="addRegionOverlay" class="modal-overlay" style="display:none;">
   <div class="modal-card">
     <h2>Yeni Bölge Oluştur</h2>
@@ -215,6 +232,15 @@
         <button type="button" class="close-x" id="closeAddRegionBtn">İptal</button>
       </div>
     </form>
+  </div>
+</div>
+<div id="idleWarnOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-card" role="alertdialog" aria-live="assertive" aria-labelledby="idleWarnTitle">
+    <h2 id="idleWarnTitle">Hâlâ orada mısınız?</h2>
+    <div class="modal-sub">Hareketsizlik nedeniyle birkaç dakika içinde oturum otomatik kapanacak.</div>
+    <div class="modal-actions">
+      <button type="button" class="go" id="stillHereBtn">Hâlâ Buradayım</button>
+    </div>
   </div>
 </div>
 <div class="wrap">
@@ -230,6 +256,7 @@
       <button id="resetBtn">Seçimi Temizle</button>
       <span id="editToolbar"></span>
       <button id="usersBtn" style="display:none;">Kullanıcılar</button>
+      <button id="activityBtn" style="display:none;">Etkinlik Günlüğü</button>
       <button id="logoutBtn" class="warn" style="display:none;">Çıkış Yap</button>
     </div>
   </header>
@@ -295,6 +322,7 @@ function featureToPath(f){
 
 let activeProvince = null;
 let selectedUnitIdx = null;
+let expandedHeadCards = new Set();   // editMode: hangi bölge baş-sorumlu kartı açık
 
 function regionColor(num){ return REGION_META[num] ? REGION_META[num].color : "#888"; }
 function unitsFor(name){ return PROVINCE_UNITS[name] || []; }
@@ -346,6 +374,18 @@ function addUnit(province, regionOverride){
   renderMap(); renderLegend(); renderPanel();
   showToast("Yeni birim eklendi. Adını ve sorumlularını düzenleyin.", "ok");
   return unit;
+}
+
+// Düzenle modunda yanlışlıkla eklenen/yanlış bir birimi kaldırır.
+function deleteUnit(province, idx){
+  const units = PROVINCE_UNITS[province];
+  if(!units || !units[idx]) return;
+  if(!confirm('"' + units[idx].name + '" birimini silmek istediğinize emin misiniz?')) return;
+  units.splice(idx, 1);
+  if(selectedUnitIdx === idx) selectedUnitIdx = null;
+  else if(selectedUnitIdx != null && selectedUnitIdx > idx) selectedUnitIdx--;
+  renderMap(); renderLegend(); renderPanel();
+  showToast("Birim silindi.", "warn");
 }
 
 // "+ Bölge Ekle": gerçek 81 illik listeden (GEO) bir il seçtirip yeni bölgeyi
@@ -555,7 +595,9 @@ function setZoom(name){
   const cx = bbox.x + bbox.width/2, cy = bbox.y + bbox.height/2;
   const margin = 1.9;
   let scale = Math.min(SVG_W/(bbox.width*margin), SVG_H/(bbox.height*margin));
-  scale = Math.max(1.15, Math.min(scale, 9));
+  // Dar aralık (2.2-5.5): en küçük/en büyük iller arasındaki aşırı zoom farkını azaltır,
+  // her il benzer "odaklanmış" hissi versin diye (eski aralık 1.15-9 çok tutarsızdı).
+  scale = Math.max(2.2, Math.min(scale, 5.5));
   const tx = SVG_W/2 - scale*cx, ty = SVG_H/2 - scale*cy;
   g.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
 }
@@ -569,7 +611,7 @@ function selectProvince(name){
   renderPanel();
 }
 
-function buildContactCardEl(unitName, regionNum, contacts, editable, onChangeRegion, onChangeName){
+function buildContactCardEl(unitName, regionNum, contacts, editable, onChangeRegion, onChangeName, onDelete){
   const wrap = document.createElement("div");
   wrap.className = "contact-card";
 
@@ -652,6 +694,15 @@ function buildContactCardEl(unitName, regionNum, contacts, editable, onChangeReg
     }
     wrap.appendChild(row);
   });
+
+  if(editable && onDelete){
+    const delBtn = document.createElement("button");
+    delBtn.type = "button"; delBtn.className = "warn";
+    delBtn.style.marginTop = "4px";
+    delBtn.textContent = "Birimi Sil";
+    delBtn.addEventListener("click", onDelete);
+    wrap.appendChild(delBtn);
+  }
   return wrap;
 }
 
@@ -673,6 +724,11 @@ function buildRegionHeadCardEl(rg){
   card.dataset.region = rg;
   card.style.borderLeftColor = r.color;
 
+  // Düzenlemede varsayılan kapalı: uzun sorumlu listesi altındaki birim listesini sıkıştırmasın.
+  const collapsible = editMode;
+  const expanded = !collapsible || expandedHeadCards.has(rg);
+  if(collapsible && !expanded) card.classList.add("collapsed");
+
   const titleRow = document.createElement("div");
   titleRow.className = "region-head-title";
   const dot = document.createElement("span");
@@ -684,9 +740,34 @@ function buildRegionHeadCardEl(rg){
     nameInput.type = "text"; nameInput.className = "region-name-input";
     nameInput.value = r.name;
     nameInput.addEventListener("input", ()=>{ r.name = nameInput.value; renderLegend(); });
+    nameInput.addEventListener("click", (e)=> e.stopPropagation());
     titleRow.appendChild(nameInput);
   } else {
     titleRow.appendChild(document.createTextNode(r.name + " Baş Sorumluları"));
+  }
+
+  if(collapsible){
+    const chevron = document.createElement("span");
+    chevron.className = "head-chevron";
+    chevron.textContent = expanded ? "▾" : "▸";
+    chevron.setAttribute("aria-hidden", "true");
+    titleRow.appendChild(chevron);
+    titleRow.style.cursor = "pointer";
+    titleRow.tabIndex = 0;
+    titleRow.setAttribute("role", "button");
+    titleRow.setAttribute("aria-expanded", String(expanded));
+    titleRow.setAttribute("aria-label", (r.name || "Bölge") + " baş sorumluları");
+    const toggle = ()=>{
+      if(expandedHeadCards.has(rg)) expandedHeadCards.delete(rg);
+      else expandedHeadCards.add(rg);
+      const nowCollapsed = card.classList.toggle("collapsed");
+      chevron.textContent = nowCollapsed ? "▸" : "▾";
+      titleRow.setAttribute("aria-expanded", String(!nowCollapsed));
+    };
+    titleRow.addEventListener("click", toggle);
+    titleRow.addEventListener("keydown", (e)=>{
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); toggle(); }
+    });
   }
   card.appendChild(titleRow);
 
@@ -797,7 +878,8 @@ function renderPanel(){
     const unitArea = document.createElement("div");
     unitArea.appendChild(buildContactCardEl(u.name, u.region, u.contacts, editMode,
       editMode ? (newRg)=>{ u.region = newRg; renderMap(); renderLegend(); renderPanel(); } : null,
-      editMode ? (newName)=>{ u.name = newName; } : null
+      editMode ? (newName)=>{ u.name = newName; } : null,
+      editMode ? ()=> deleteUnit(activeProvince, 0) : null
     ));
     panel.appendChild(unitArea);
     if(editMode) panel.appendChild(buildAddUnitBtn(activeProvince));
@@ -844,7 +926,8 @@ function renderPanel(){
       wrap.style.margin = "2px 0 4px";
       wrap.appendChild(buildContactCardEl(u.name, u.region, u.contacts, editMode,
         editMode ? (newRg)=>{ u.region = newRg; renderMap(); renderLegend(); renderPanel(); } : null,
-        editMode ? (newName)=>{ u.name = newName; nameSpan.textContent = newName; } : null
+        editMode ? (newName)=>{ u.name = newName; nameSpan.textContent = newName; } : null,
+        editMode ? ()=> deleteUnit(activeProvince, idx) : null
       ));
       item.appendChild(wrap);
     }
@@ -880,7 +963,7 @@ function setSyncStatus(state, text){
 
 function showToast(msg, kind){
   let t = document.getElementById("toast");
-  if(!t){ t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  if(!t){ t = document.createElement("div"); t.id = "toast"; t.setAttribute("role","status"); t.setAttribute("aria-live","polite"); document.body.appendChild(t); }
   t.textContent = msg;
   t.className = "toast show " + (kind || "");
   clearTimeout(t._timer);
@@ -948,20 +1031,62 @@ async function pollRefresh(){
 }
 
 /* ---------- AUTH: giriş / çıkış / oturum durumu ---------- */
-let authToken = localStorage.getItem("vhToken") || null;
-let authRole = localStorage.getItem("vhRole") || null;
-let authUsername = localStorage.getItem("vhUser") || null;
+/* sessionStorage bilinçli seçim: sekme/tarayıcı kapanınca oturum silinir — linke her
+   girişte (yeni sekme/tarayıcı açılışında) tekrar login istensin diye (hassas veri). */
+let authToken = sessionStorage.getItem("vhToken") || null;
+let authRole = sessionStorage.getItem("vhRole") || null;
+let authUsername = sessionStorage.getItem("vhUser") || null;
 
 function setAuth(token, role, username){
   authToken = token; authRole = role; authUsername = username;
-  localStorage.setItem("vhToken", token);
-  localStorage.setItem("vhRole", role);
-  localStorage.setItem("vhUser", username);
+  sessionStorage.setItem("vhToken", token);
+  sessionStorage.setItem("vhRole", role);
+  sessionStorage.setItem("vhUser", username);
 }
 function clearAuth(){
   authToken = null; authRole = null; authUsername = null;
-  localStorage.removeItem("vhToken"); localStorage.removeItem("vhRole"); localStorage.removeItem("vhUser");
+  sessionStorage.removeItem("vhToken"); sessionStorage.removeItem("vhRole"); sessionStorage.removeItem("vhUser");
 }
+
+/* Hareketsizlik: 5 dk sonra "hâlâ orada mısın?" popup'ı, 5 dk daha cevapsız kalırsa
+   (toplam 10 dk) otomatik çıkış. Popup açıkken sıradan hareket (mouse/scroll) onu
+   otomatik kapatmaz — yalnızca "Hâlâ Buradayım" tıklaması sayılır (gerçek onay). */
+const IDLE_WARN_MS = 5 * 60 * 1000;
+const IDLE_LOGOUT_MS = 5 * 60 * 1000;
+let idleWarnTimer = null;
+let idleLogoutTimer = null;
+let idleWarningShown = false;
+
+function armIdleWarnTimer(){
+  clearTimeout(idleWarnTimer);
+  idleWarnTimer = setTimeout(()=>{
+    idleWarningShown = true;
+    document.getElementById("idleWarnOverlay").style.display = "flex";
+    document.getElementById("stillHereBtn").focus();
+    idleLogoutTimer = setTimeout(()=>{
+      doLogout("Hareketsizlik nedeniyle oturum sonlandırıldı.");
+    }, IDLE_LOGOUT_MS);
+  }, IDLE_WARN_MS);
+}
+function clearIdleTimers(){
+  clearTimeout(idleWarnTimer); clearTimeout(idleLogoutTimer);
+  idleWarningShown = false;
+  document.getElementById("idleWarnOverlay").style.display = "none";
+}
+function resetIdleTimer(){
+  if(!authToken || idleWarningShown) return;   // popup açıkken sıradan hareket saymaz
+  armIdleWarnTimer();
+}
+function confirmStillHere(){
+  clearTimeout(idleLogoutTimer);
+  idleWarningShown = false;
+  document.getElementById("idleWarnOverlay").style.display = "none";
+  armIdleWarnTimer();
+}
+["mousemove","keydown","click","touchstart","scroll"].forEach(evt=>{
+  window.addEventListener(evt, resetIdleTimer, { passive: true });
+});
+document.getElementById("stillHereBtn").addEventListener("click", confirmStillHere);
 
 function showLogin(msg){
   stopPolling();
@@ -973,21 +1098,25 @@ function showLogin(msg){
 function hideLogin(){
   document.title = "Türkiye Vakıf Bölge Haritası";
   document.getElementById("loginOverlay").style.display = "none";
+  armIdleWarnTimer();
 }
 
 function updateAuthUI(){
   const badge = document.getElementById("authBadge");
   const usersBtn = document.getElementById("usersBtn");
+  const activityBtn = document.getElementById("activityBtn");
   const logoutBtn = document.getElementById("logoutBtn");
   if(authUsername){
     badge.style.display = "";
     badge.textContent = authUsername + " · " + (authRole === "admin" ? "admin" : "viewer");
     logoutBtn.style.display = "";
     usersBtn.style.display = authRole === "admin" ? "" : "none";
+    activityBtn.style.display = authRole === "admin" ? "" : "none";
   }else{
     badge.style.display = "none";
     logoutBtn.style.display = "none";
     usersBtn.style.display = "none";
+    activityBtn.style.display = "none";
   }
 }
 
@@ -997,13 +1126,14 @@ async function doLogin(username, password){
   setAuth(out.token, out.role, out.username);
 }
 
-async function doLogout(){
+async function doLogout(msg){
+  clearIdleTimers();
   if(authToken){ try{ await postAction("logout", {}); }catch(e){} }
   clearAuth();
   updateAuthUI();
   REGION_META = {}; PROVINCE_UNITS = {};
   activeProvince = null; selectedUnitIdx = null; highlightRegion = null;
-  showLogin();
+  showLogin(msg);
 }
 
 function handleUnauthorized(){
@@ -1070,6 +1200,7 @@ function renderUserList(users){
     delBtn.type = "button"; delBtn.className = "small";
     delBtn.textContent = "Sil";
     delBtn.addEventListener("click", async ()=>{
+      if(!confirm('"' + u.username + '" kullanıcısını silmek istediğinize emin misiniz?')) return;
       delBtn.disabled = true;
       try{
         const out = await postAction("deleteUser", { username: u.username });
@@ -1113,6 +1244,53 @@ document.getElementById("addUserForm").addEventListener("submit", async (ev)=>{
   }catch(e){
     errEl.textContent = "Ağ hatası — eklenemedi.";
   }
+});
+
+/* ---------- ETKİNLİK GÜNLÜĞÜ (admin-only, salt-okunur) ---------- */
+async function openActivityModal(){
+  document.getElementById("activityOverlay").style.display = "flex";
+  const list = document.getElementById("activityList");
+  list.innerHTML = "<li>Yükleniyor…</li>";
+  try{
+    const out = await postAction("listActivity", {});
+    if(!out.ok){
+      if(out.error === "unauthorized") return handleUnauthorized();
+      list.innerHTML = "<li>Yüklenemedi.</li>";
+      return;
+    }
+    renderActivityList(out.activity);
+  }catch(e){
+    list.innerHTML = "<li>Ağ hatası.</li>";
+  }
+}
+function closeActivityModal(){ document.getElementById("activityOverlay").style.display = "none"; }
+
+function renderActivityList(rows){
+  const list = document.getElementById("activityList");
+  list.innerHTML = "";
+  if(!rows.length){ list.innerHTML = "<li>Henüz kayıt yok.</li>"; return; }
+  rows.forEach(a=>{
+    const li = document.createElement("li");
+    const meta = document.createElement("span");
+    meta.className = "a-meta";
+    meta.textContent = new Date(a.time).toLocaleString("tr-TR") + " · " + a.username;
+    const summary = document.createElement("span");
+    summary.className = "a-summary";
+    summary.textContent = a.summary;
+    li.appendChild(meta); li.appendChild(summary);
+    list.appendChild(li);
+  });
+}
+
+document.getElementById("activityBtn").addEventListener("click", openActivityModal);
+document.getElementById("closeActivityBtn").addEventListener("click", closeActivityModal);
+
+// Escape ile kapatılabilir modallar (login ve hareketsizlik uyarısı hariç — onlar açık kalmalı).
+document.addEventListener("keydown", (e)=>{
+  if(e.key !== "Escape") return;
+  if(document.getElementById("usersOverlay").style.display === "flex") closeUsersModal();
+  else if(document.getElementById("activityOverlay").style.display === "flex") closeActivityModal();
+  else if(document.getElementById("addRegionOverlay").style.display === "flex") closeAddRegionModal();
 });
 
 /* ---------- EDIT MODE: enter / save / cancel / persist ---------- */
